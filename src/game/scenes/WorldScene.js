@@ -61,7 +61,7 @@ export class WorldScene extends Scene {
     const startY = data.returnTo ? data.returnTo.y : 320
     this.player = new Player(this, startX, startY)
     this.player.setDepth(100)
-    this.physics.add.collider(this.player, collisionLayer)
+    this._collider = this.physics.add.collider(this.player, collisionLayer)
 
     // --- player indicator arrow ---
     this._playerArrow = this.add.triangle(startX, startY - 14, 0, 8, 5, 0, 10, 8, 0xffeb3b)
@@ -563,6 +563,9 @@ export class WorldScene extends Scene {
     this._swimming = true
     this.player.setBlocked(true)
 
+    // Disable world collision so player can swim freely in pond
+    if (this._collider) this._collider.active = false
+
     // Teleport to pond center
     this.player.setPosition(this._pondCenter.x, this._pondCenter.y)
     if (this._playerArrow) this._playerArrow.setVisible(false)
@@ -827,6 +830,9 @@ export class WorldScene extends Scene {
     // Clear swim mode
     this.player.clearSwimMode()
     this._swimming = false
+
+    // Re-enable world collision
+    if (this._collider) this._collider.active = true
 
     // Move to pond edge
     this.player.setPosition(this._pondEdge.x, this._pondEdge.y)
