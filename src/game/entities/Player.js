@@ -46,6 +46,18 @@ export class Player extends Phaser.GameObjects.Sprite {
     if (val) this.body.setVelocity(0, 0)
   }
 
+  setSwimMode(bounds) {
+    this._swimming = true
+    this._swimBounds = bounds
+    this.setTint(0x44aaff)
+  }
+
+  clearSwimMode() {
+    this._swimming = false
+    this._swimBounds = null
+    this.clearTint()
+  }
+
   update() {
     if (this._blocked) return
     const k = this._keys
@@ -67,6 +79,13 @@ export class Player extends Phaser.GameObjects.Sprite {
       this.setFlipX(vx < 0)
     } else {
       this.play('player_idle', true)
+    }
+
+    // Clamp to swim bounds if swimming
+    if (this._swimming && this._swimBounds) {
+      const b = this._swimBounds
+      this.x = Phaser.Math.Clamp(this.x, b.x, b.x + b.width)
+      this.y = Phaser.Math.Clamp(this.y, b.y, b.y + b.height)
     }
   }
 }
