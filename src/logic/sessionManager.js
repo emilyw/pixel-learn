@@ -10,6 +10,7 @@ export function checkDailyReset(save, today = todayString()) {
     dailyHeartsEarned: 0,
     dailyQuestProgress: 0,
     dailyQuestComplete: false,
+    pondWordsToday: 0,
   }
 }
 
