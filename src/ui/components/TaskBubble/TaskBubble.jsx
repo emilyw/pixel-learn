@@ -60,7 +60,7 @@ export function TaskBubble() {
         const wordEntry = bank[Math.floor(Math.random() * bank.length)]
         const pondMission = {
           type: 'pond',
-          word: wordEntry.word.toUpperCase(),
+          word: wordEntry.word.toLowerCase(),
           emoji: wordEntry.emoji || '',
           npcId,
           npcName,

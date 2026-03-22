@@ -598,12 +598,12 @@ export class WorldScene extends Scene {
     // Select word
     let pondWord, pondEmoji
     if (save.activeMission && save.activeMission.type === 'pond') {
-      pondWord = save.activeMission.word
+      pondWord = save.activeMission.word.toLowerCase()
       pondEmoji = save.activeMission.emoji || ''
     } else {
       const bank = this._wordBanks[save.skillLevel]
       const wordEntry = bank[Math.floor(Math.random() * bank.length)]
-      pondWord = wordEntry.word.toUpperCase()
+      pondWord = wordEntry.word.toLowerCase()
       pondEmoji = wordEntry.emoji || ''
     }
     this._pondWord = pondWord
@@ -642,7 +642,7 @@ export class WorldScene extends Scene {
     this._letterTiles = []
     const word = this._pondWord
     const bounds = this._pondBounds
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz'
 
     // Spawn correct letters scattered in pond
     for (let i = 0; i < word.length; i++) {
