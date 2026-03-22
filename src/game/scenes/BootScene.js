@@ -1,38 +1,62 @@
 import { Scene } from 'phaser'
+import { NPCS } from '../../data/npcs'
 
 export class BootScene extends Scene {
   constructor() { super('BootScene') }
 
   preload() {
-    const colours = {
-      player:          0x4fc3f7,
-      npc_mayor_hop:   0x4caf50,
-      npc_blaze:       0xef5350,
-      npc_biscuit:     0xf48fb1,
-      npc_doodle:      0xff8f00,
-      npc_mittens:     0x9c27b0,
-      npc_professor_hoot: 0xff8f00,
-      npc_coach_roar:  0x795548,
-      npc_mossy:       0x69f0ae,
-      npc_clover:      0xf5f5f5,
-      npc_ripple:      0x4caf50,
-      npc_mystery:     0x37474f,
-      padlock:         0x757575,
-    }
+    // --- progress bar ---
+    const { width, height } = this.scale
+    const barW = Math.round(width * 0.6)
+    const barH = 18
+    const barX = (width - barW) / 2
+    const barY = height / 2
 
-    Object.entries(colours).forEach(([key, colour]) => {
-      const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(colour)
-      g.fillRect(0, 0, 32, 32)
-      g.generateTexture(key, 32, 32)
-      g.destroy()
+    const bgBar = this.add.graphics()
+    bgBar.fillStyle(0x222222)
+    bgBar.fillRect(barX, barY, barW, barH)
+
+    const fillBar = this.add.graphics()
+    this.load.on('progress', (v) => {
+      fillBar.clear()
+      fillBar.fillStyle(0x4fc3f7)
+      fillBar.fillRect(barX + 2, barY + 2, (barW - 4) * v, barH - 4)
+    })
+    this.load.on('complete', () => {
+      bgBar.destroy()
+      fillBar.destroy()
     })
 
-    const bg = this.make.graphics({ add: false })
-    bg.fillStyle(0x2d5a27)
-    bg.fillRect(0, 0, 960, 640)
-    bg.generateTexture('world_bg', 960, 640)
-    bg.destroy()
+    // --- tilemap & tileset ---
+    this.load.tilemapTiledJSON('village', 'assets/maps/village.json')
+    this.load.image('tileset_terrain', 'assets/maps/terrain-simple.png')
+    this.load.image('tileset_collision', 'assets/maps/collision.png')
+
+    // --- player spritesheet ---
+    this.load.spritesheet('player', 'assets/sprites/player.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    })
+
+    // --- NPC spritesheets ---
+    NPCS.forEach((npc) => {
+      const filename = npc.sprite.replace('npc_', 'npc-')
+      this.load.spritesheet(npc.sprite, `assets/sprites/${filename}.png`, {
+        frameWidth: 32,
+        frameHeight: 32,
+      })
+    })
+
+    // --- procedural padlock texture ---
+    const g = this.make.graphics({ x: 0, y: 0, add: false })
+    g.fillStyle(0x757575)
+    // lock body
+    g.fillRect(8, 14, 16, 14)
+    // shackle
+    g.lineStyle(3, 0x757575)
+    g.strokeCircle(16, 12, 6)
+    g.generateTexture('padlock', 32, 32)
+    g.destroy()
   }
 
   create() {

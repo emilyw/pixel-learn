@@ -1,15 +1,40 @@
 import Phaser from 'phaser'
 
-export class Player extends Phaser.GameObjects.Rectangle {
+export class Player extends Phaser.GameObjects.Sprite {
   constructor(scene, x, y) {
-    super(scene, x, y, 20, 28, 0x4fc3f7)
+    super(scene, x, y, 'player', 8)
     scene.add.existing(this)
     scene.physics.add.existing(this)
+
     this.body.setCollideWorldBounds(true)
+    this.body.setSize(16, 20)
+    this.body.setOffset(8, 12)
+
     this.speed = 80
     this._keys = scene.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT')
     this._dpad = { up: false, down: false, left: false, right: false }
     this._blocked = false
+
+    // --- animations ---
+    if (!scene.anims.exists('player_idle')) {
+      scene.anims.create({
+        key: 'player_idle',
+        frames: [{ key: 'player', frame: 8 }],
+        frameRate: 1,
+        repeat: 0,
+      })
+    }
+
+    if (!scene.anims.exists('player_run')) {
+      scene.anims.create({
+        key: 'player_run',
+        frames: scene.anims.generateFrameNumbers('player', { start: 16, end: 21 }),
+        frameRate: 10,
+        repeat: -1,
+      })
+    }
+
+    this.play('player_idle')
   }
 
   setDpad(direction, active) {
@@ -35,5 +60,13 @@ export class Player extends Phaser.GameObjects.Rectangle {
     if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707 }
 
     this.body.setVelocity(vx, vy)
+
+    // animation & flip
+    if (vx !== 0) {
+      this.play('player_run', true)
+      this.setFlipX(vx < 0)
+    } else {
+      this.play('player_idle', true)
+    }
   }
 }
