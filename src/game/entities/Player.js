@@ -58,6 +58,18 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.clearTint()
   }
 
+  setChopMode(bounds) {
+    this._chopping = true
+    this._chopBounds = bounds
+    this.setTint(0x8D6E63)
+  }
+
+  clearChopMode() {
+    this._chopping = false
+    this._chopBounds = null
+    this.clearTint()
+  }
+
   update() {
     if (this._blocked) return
     const k = this._keys
@@ -84,6 +96,13 @@ export class Player extends Phaser.GameObjects.Sprite {
     // Clamp to swim bounds if swimming
     if (this._swimming && this._swimBounds) {
       const b = this._swimBounds
+      this.x = Phaser.Math.Clamp(this.x, b.x, b.x + b.width)
+      this.y = Phaser.Math.Clamp(this.y, b.y, b.y + b.height)
+    }
+
+    // Clamp to chop bounds if chopping
+    if (this._chopping && this._chopBounds) {
+      const b = this._chopBounds
       this.x = Phaser.Math.Clamp(this.x, b.x, b.x + b.width)
       this.y = Phaser.Math.Clamp(this.y, b.y, b.y + b.height)
     }
