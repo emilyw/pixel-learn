@@ -134,19 +134,20 @@ export class WorldScene extends Scene {
     // --- pond swimming ---
     this._wordBanks = { beginner: beginnerBank, intermediate: intermediateBank, advanced: advancedBank }
 
-    // First pond: tiles (5,4)-(9,6) → pixels (80,64)-(160,112)
-    this._pondBounds = { x: 80, y: 64, width: 80, height: 48 }
-    this._pondCenter = { x: 120, y: 88 }
-    this._pondEdge = { x: 72, y: 100 } // lily pad / exit point
+    // Right pond: tiles (45,25)-(50,28) → pixels (720,400)-(816,464) — largest pond
+    // Swim bounds padded for playable area
+    this._pondBounds = { x: 720, y: 400, width: 96, height: 64 }
+    this._pondCenter = { x: 768, y: 432 }
+    this._pondEdge = { x: 712, y: 440 } // lily pad / exit point (left edge)
     this._swimming = false
     this._letterTiles = null
 
     // Bubbles the frog - sits just outside pond collision at left edge
-    const bubbles = this.add.sprite(72, 72, 'npc_mayor_hop', 8)
+    const bubbles = this.add.sprite(712, 410, 'npc_mayor_hop', 8)
     bubbles.setTint(0x4caf50)
     bubbles.setScale(0.7)
     bubbles.setDepth(90)
-    this.add.text(72, 56, 'Bubbles', {
+    this.add.text(712, 394, 'Bubbles', {
       fontFamily: '"Press Start 2P"', fontSize: '6px', color: '#ffffff',
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5, 1).setDepth(91)
@@ -546,9 +547,9 @@ export class WorldScene extends Scene {
 
   _showBubblesDialogue(msg) {
     // Floating dialogue near Bubbles
-    const dialogBg = this.add.rectangle(120, 50, 200, 40, 0x000000, 0.8)
+    const dialogBg = this.add.rectangle(768, 385, 200, 40, 0x000000, 0.8)
     dialogBg.setDepth(200).setStrokeStyle(1, 0x4caf50)
-    const dialogText = this.add.text(120, 50, msg, {
+    const dialogText = this.add.text(768, 385, msg, {
       fontFamily: '"Press Start 2P"', fontSize: '5px', color: '#ffffff',
       wordWrap: { width: 190 }, align: 'center',
     }).setOrigin(0.5).setDepth(201)
