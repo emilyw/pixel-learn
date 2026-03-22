@@ -12,6 +12,11 @@ export const DEFAULT_SAVE = {
   dailyQuestProgress: 0,
   dailyQuestComplete: false,
   isFirstPlay: true,
+  borrowedBook: null,
+  activeMission: null,
+  unlockedBooks: [1, 2, 3, 4],
+  completedDeliveries: 0,
+  booksRead: [],
 }
 
 export function loadSave() {
