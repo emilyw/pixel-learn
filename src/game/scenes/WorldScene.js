@@ -4,6 +4,10 @@ import { EventBus } from '../EventBus'
 import { loadSave, writeSave } from '../../logic/saveSystem'
 import { completeDelivery } from '../../logic/missionSystem'
 import { NPCS } from '../../data/npcs'
+import { isDailyCapped, addDailyHearts, incrementQuestProgress } from '../../logic/sessionManager'
+import beginnerBank from '../../data/words/beginner.json'
+import intermediateBank from '../../data/words/intermediate.json'
+import advancedBank from '../../data/words/advanced.json'
 
 export class WorldScene extends Scene {
   constructor() { super('WorldScene') }
@@ -126,6 +130,39 @@ export class WorldScene extends Scene {
     }, this)
 
     this._activeMission = loadSave().activeMission
+
+    // --- pond swimming ---
+    this._wordBanks = { beginner: beginnerBank, intermediate: intermediateBank, advanced: advancedBank }
+
+    // First pond: tiles (5,4)-(9,6) → pixels (80,64)-(160,112)
+    this._pondBounds = { x: 80, y: 64, width: 80, height: 48 }
+    this._pondCenter = { x: 120, y: 88 }
+    this._pondEdge = { x: 72, y: 100 } // lily pad / exit point
+    this._swimming = false
+    this._letterTiles = null
+
+    // Bubbles the frog - sits just outside pond collision at left edge
+    const bubbles = this.add.sprite(72, 72, 'npc_mayor_hop', 8)
+    bubbles.setTint(0x4caf50)
+    bubbles.setScale(0.7)
+    bubbles.setDepth(90)
+    this.add.text(72, 56, 'Bubbles', {
+      fontFamily: '"Press Start 2P"', fontSize: '6px', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5, 1).setDepth(91)
+
+    // Lily pad visual at exit point
+    this.add.circle(this._pondEdge.x, this._pondEdge.y, 8, 0x4caf50).setDepth(89).setAlpha(0.8)
+    this.add.circle(this._pondEdge.x + 2, this._pondEdge.y - 1, 6, 0x66bb6a).setDepth(89).setAlpha(0.7)
+
+    // Bubbles click interaction
+    bubbles.setInteractive({ useHandCursor: true })
+    bubbles.on('pointerdown', () => this._tryEnterPond())
+
+    // Shutdown cleanup
+    this.events.on('shutdown', () => {
+      if (this._swimming) this._exitPond(false)
+    })
   }
 
   _spawnNPC(def, x, y) {
@@ -408,6 +445,29 @@ export class WorldScene extends Scene {
       }
     }
 
+    // Pond letter collection
+    if (this._swimming && this._letterTiles) {
+      this._letterTiles.forEach(tile => {
+        if (tile.collected) return
+        const dist = Phaser.Math.Distance.Between(
+          this.player.x, this.player.y, tile.bg.x, tile.bg.y
+        )
+        if (dist < 14) {
+          this._collectLetter(tile)
+        }
+      })
+
+      // Early exit: swim to lily pad area
+      if (this._pondLettersCollected < this._pondWord.length) {
+        const edgeDist = Phaser.Math.Distance.Between(
+          this.player.x, this.player.y, this._pondEdge.x, this._pondEdge.y
+        )
+        if (edgeDist < 12) {
+          this._exitPond(false)
+        }
+      }
+    }
+
     // Update mini map overlay
     if (this._mmOverlay) {
       const ov = this._mmOverlay
@@ -461,5 +521,281 @@ export class WorldScene extends Scene {
         }
       }
     }
+  }
+
+  _tryEnterPond() {
+    const save = loadSave()
+    if (this._swimming) return
+    if (save.activeMission && save.activeMission.type !== 'pond') {
+      EventBus.emit('pond-denied', { reason: 'active-mission' })
+      return
+    }
+    if (isDailyCapped(save)) {
+      EventBus.emit('pond-denied', { reason: 'daily-cap' })
+      return
+    }
+    this._enterPond(save)
+  }
+
+  _enterPond(save) {
+    this._swimming = true
+    this.player.setBlocked(true)
+
+    // Teleport to pond center
+    this.player.setPosition(this._pondCenter.x, this._pondCenter.y)
+    if (this._playerArrow) this._playerArrow.setVisible(false)
+
+    // Screen shake + splash
+    this.cameras.main.shake(50, 0.005)
+
+    // Splash text
+    const splashText = this.add.text(this._pondCenter.x, this._pondCenter.y - 20, 'SPLASH!', {
+      fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ffffff',
+      stroke: '#2196f3', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(105)
+    this.tweens.add({
+      targets: splashText, alpha: 0, y: splashText.y - 30,
+      duration: 1000, ease: 'Sine.easeOut',
+      onComplete: () => splashText.destroy(),
+    })
+
+    // Apply swim mode
+    this.player.setSwimMode(this._pondBounds)
+    this.player.setDepth(100)
+
+    // Wobble tween
+    this._wobbleTween = this.tweens.add({
+      targets: this.player, angle: 5,
+      duration: 400, yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    })
+
+    // Select word
+    let pondWord
+    if (save.activeMission && save.activeMission.type === 'pond') {
+      pondWord = save.activeMission.word
+    } else {
+      const bank = this._wordBanks[save.skillLevel]
+      const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+      pondWord = wordEntry.word.toUpperCase()
+    }
+    this._pondWord = pondWord
+    this._pondLettersCollected = 0
+    this._pondGoldenIndex = Math.random() < 0.2 ? Math.floor(Math.random() * this._pondWord.length) : -1
+    this._pondFoundGolden = false
+
+    // Spawn letter tiles
+    this._spawnLetterTiles()
+
+    // Unblock player for swimming
+    this.player.setBlocked(false)
+
+    // Emit event for React HUD
+    EventBus.emit('pond-enter', { word: this._pondWord })
+  }
+
+  _spawnLetterTiles() {
+    this._letterTiles = []
+    const word = this._pondWord
+    const bounds = this._pondBounds
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    // Spawn correct letters scattered in pond
+    for (let i = 0; i < word.length; i++) {
+      const letter = word[i]
+      const x = bounds.x + 10 + Math.random() * (bounds.width - 20)
+      const y = bounds.y + 10 + Math.random() * (bounds.height - 20)
+      const isGolden = i === this._pondGoldenIndex
+
+      const tile = this._createLetterTile(x, y, letter, i, true, isGolden)
+      this._letterTiles.push(tile)
+    }
+
+    // Spawn 2-3 decoy letters
+    const decoyCount = 2 + Math.floor(Math.random() * 2)
+    for (let i = 0; i < decoyCount; i++) {
+      let decoyLetter
+      do {
+        decoyLetter = alphabet[Math.floor(Math.random() * 26)]
+      } while (word.includes(decoyLetter))
+
+      const x = bounds.x + 10 + Math.random() * (bounds.width - 20)
+      const y = bounds.y + 10 + Math.random() * (bounds.height - 20)
+      const tile = this._createLetterTile(x, y, decoyLetter, -1, false, false)
+      this._letterTiles.push(tile)
+    }
+  }
+
+  _createLetterTile(x, y, letter, index, isCorrect, isGolden) {
+    const bg = this.add.rectangle(x, y, 18, 18, isGolden ? 0xffd700 : 0x1565c0)
+    bg.setStrokeStyle(1, isGolden ? 0xffab00 : 0x0d47a1)
+    bg.setDepth(95)
+    bg.setAlpha(isCorrect ? 1 : 0.6)
+
+    const text = this.add.text(x, y, letter, {
+      fontFamily: '"Press Start 2P"', fontSize: '9px',
+      color: isGolden ? '#3e2723' : '#ffffff',
+    }).setOrigin(0.5).setDepth(96)
+
+    const bobTween = this.tweens.add({
+      targets: [bg, text], y: y - 3,
+      duration: 800 + Math.random() * 400,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    })
+
+    let shimmerTween = null
+    if (isGolden) {
+      shimmerTween = this.tweens.add({
+        targets: bg, alpha: 0.7,
+        duration: 500, yoyo: true, repeat: -1,
+      })
+    }
+
+    return { bg, text, letter, index, isCorrect, isGolden, bobTween, shimmerTween, collected: false }
+  }
+
+  _collectLetter(tile) {
+    if (tile.collected) return
+    tile.collected = true
+
+    if (tile.isCorrect && tile.index === this._pondLettersCollected) {
+      // Correct letter in order
+      tile.bobTween.stop()
+      if (tile.shimmerTween) tile.shimmerTween.stop()
+
+      this.tweens.add({
+        targets: [tile.bg, tile.text], scaleX: 1.5, scaleY: 1.5, alpha: 0,
+        duration: 300, ease: 'Back.easeIn',
+        onComplete: () => { tile.bg.destroy(); tile.text.destroy() },
+      })
+
+      const isGolden = tile.isGolden
+      if (isGolden) this._pondFoundGolden = true
+
+      this._pondLettersCollected++
+      EventBus.emit('pond-letter-collect', {
+        letter: tile.letter,
+        index: tile.index,
+        isGolden,
+        isCorrect: true,
+      })
+
+      if (this._pondLettersCollected >= this._pondWord.length) {
+        this._completePondWord()
+      }
+    } else {
+      // Wrong letter or out of order
+      EventBus.emit('pond-letter-collect', {
+        letter: tile.letter,
+        index: tile.index,
+        isGolden: false,
+        isCorrect: false,
+      })
+
+      tile.bobTween.stop()
+      this.tweens.add({
+        targets: [tile.bg, tile.text], alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          this.time.delayedCall(2000, () => {
+            if (!this._swimming) return
+            const b = this._pondBounds
+            const nx = b.x + 10 + Math.random() * (b.width - 20)
+            const ny = b.y + 10 + Math.random() * (b.height - 20)
+            tile.bg.setPosition(nx, ny)
+            tile.text.setPosition(nx, ny)
+            tile.bg.setAlpha(tile.isCorrect ? 1 : 0.6)
+            tile.text.setAlpha(1)
+            tile.collected = false
+            tile.bobTween = this.tweens.add({
+              targets: [tile.bg, tile.text], y: ny - 3,
+              duration: 800 + Math.random() * 400,
+              yoyo: true, repeat: -1,
+              ease: 'Sine.easeInOut',
+            })
+          })
+        },
+      })
+    }
+  }
+
+  _completePondWord() {
+    this.player.setBlocked(true)
+
+    const celebText = this.add.text(this._pondCenter.x, this._pondCenter.y - 20, 'Well done!', {
+      fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ffeb3b',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(110)
+    this.tweens.add({
+      targets: celebText, alpha: 0, y: celebText.y - 30,
+      duration: 1500, onComplete: () => celebText.destroy(),
+    })
+
+    // Calculate hearts
+    let hearts
+    let save = loadSave()
+    if (save.activeMission && save.activeMission.type === 'pond') {
+      hearts = 3
+      save.activeMission = null
+    } else {
+      hearts = 1
+    }
+    if (this._pondFoundGolden) hearts++
+
+    save.pondWordsSpelled = (save.pondWordsSpelled || 0) + 1
+    save.pondWordsToday = (save.pondWordsToday || 0) + 1
+    if (this._pondFoundGolden) {
+      save.goldenLettersFound = (save.goldenLettersFound || 0) + 1
+    }
+
+    save = addDailyHearts(save, hearts)
+    save = incrementQuestProgress(save)
+    writeSave(save)
+    EventBus.emit('save-updated')
+    EventBus.emit('hearts-earned', {
+      amount: hearts,
+      screenX: this.scale.width / 2,
+      screenY: this.scale.height / 2,
+    })
+
+    EventBus.emit('pond-word-complete', { word: this._pondWord, heartsEarned: hearts })
+
+    this.time.delayedCall(1200, () => {
+      this._exitPond(true)
+    })
+  }
+
+  _exitPond(completed) {
+    // Clean up letter tiles
+    if (this._letterTiles) {
+      this._letterTiles.forEach(tile => {
+        if (tile.bobTween) tile.bobTween.stop()
+        if (tile.shimmerTween) tile.shimmerTween.stop()
+        if (tile.bg && !tile.bg.scene) return
+        if (tile.bg) tile.bg.destroy()
+        if (tile.text) tile.text.destroy()
+      })
+      this._letterTiles = null
+    }
+
+    // Stop wobble
+    if (this._wobbleTween) {
+      this._wobbleTween.stop()
+      this.player.angle = 0
+    }
+
+    // Clear swim mode
+    this.player.clearSwimMode()
+    this._swimming = false
+
+    // Move to pond edge
+    this.player.setPosition(this._pondEdge.x, this._pondEdge.y)
+    this.player.setBlocked(false)
+
+    // Show arrow again
+    if (this._playerArrow) this._playerArrow.setVisible(true)
+
+    EventBus.emit('pond-exit', { completed })
   }
 }
