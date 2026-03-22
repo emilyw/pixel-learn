@@ -527,14 +527,35 @@ export class WorldScene extends Scene {
     const save = loadSave()
     if (this._swimming) return
     if (save.activeMission && save.activeMission.type !== 'pond') {
+      this._showBubblesDialogue('Finish what you\'re doing first, then come swim!')
       EventBus.emit('pond-denied', { reason: 'active-mission' })
       return
     }
     if (isDailyCapped(save)) {
+      this._showBubblesDialogue('You\'ve earned enough hearts today! Come splash around tomorrow.')
       EventBus.emit('pond-denied', { reason: 'daily-cap' })
       return
     }
+    // Show welcome message
+    if (!this._bubblesVisited) {
+      this._showBubblesDialogue('Want to go for a swim? Jump in and spell a word!')
+      this._bubblesVisited = true
+    }
     this._enterPond(save)
+  }
+
+  _showBubblesDialogue(msg) {
+    // Floating dialogue near Bubbles
+    const dialogBg = this.add.rectangle(120, 50, 200, 40, 0x000000, 0.8)
+    dialogBg.setDepth(200).setStrokeStyle(1, 0x4caf50)
+    const dialogText = this.add.text(120, 50, msg, {
+      fontFamily: '"Press Start 2P"', fontSize: '5px', color: '#ffffff',
+      wordWrap: { width: 190 }, align: 'center',
+    }).setOrigin(0.5).setDepth(201)
+    this.time.delayedCall(2500, () => {
+      dialogBg.destroy()
+      dialogText.destroy()
+    })
   }
 
   _enterPond(save) {
@@ -583,6 +604,7 @@ export class WorldScene extends Scene {
     this._pondLettersCollected = 0
     this._pondGoldenIndex = Math.random() < 0.2 ? Math.floor(Math.random() * this._pondWord.length) : -1
     this._pondFoundGolden = false
+    this._pondWrongLetters = 0
 
     // Spawn letter tiles
     this._spawnLetterTiles()
@@ -681,11 +703,24 @@ export class WorldScene extends Scene {
         isCorrect: true,
       })
 
+      // Speak the letter aloud if voice is on
+      try {
+        const audioSave = loadSave()
+        if (audioSave.audioEnabled) {
+          window.speechSynthesis.cancel()
+          const utt = new SpeechSynthesisUtterance(tile.letter)
+          utt.rate = 0.9
+          utt.pitch = 1.2
+          window.speechSynthesis.speak(utt)
+        }
+      } catch (_) { /* speech not available */ }
+
       if (this._pondLettersCollected >= this._pondWord.length) {
         this._completePondWord()
       }
     } else {
       // Wrong letter or out of order
+      this._pondWrongLetters++
       EventBus.emit('pond-letter-collect', {
         letter: tile.letter,
         index: tile.index,
@@ -736,7 +771,10 @@ export class WorldScene extends Scene {
     let hearts
     let save = loadSave()
     if (save.activeMission && save.activeMission.type === 'pond') {
-      hearts = 3
+      // Mission: 3/2/1 based on wrong letters collected
+      if (this._pondWrongLetters <= 1) hearts = 3
+      else if (this._pondWrongLetters <= 3) hearts = 2
+      else hearts = 1
       save.activeMission = null
     } else {
       hearts = 1

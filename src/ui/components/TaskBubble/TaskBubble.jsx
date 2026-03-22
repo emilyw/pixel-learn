@@ -54,8 +54,8 @@ export function TaskBubble() {
         }
       }
 
-      // 10% chance of pond mission request
-      if (Math.random() < 0.1 && !save.activeMission) {
+      // 20% chance of pond mission request (same as book requests)
+      if (Math.random() < 0.2 && !save.activeMission) {
         const bank = BANKS[save.skillLevel]
         const wordEntry = bank[Math.floor(Math.random() * bank.length)]
         const pondMission = {
