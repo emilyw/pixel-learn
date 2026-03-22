@@ -11,7 +11,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100vw', height: '100dvh', overflow: 'hidden' }}>
       <PhaserGame />
       <HUD />
       <TaskBubble />
@@ -19,12 +19,16 @@ export default function App() {
       <UnlockModal />
       <button
         onClick={() => setShowSettings(true)}
-        style={{ position: 'fixed', top: 8, left: 8, zIndex: 10, fontFamily: 'Press Start 2P', fontSize: '8px', background: '#263238', border: '2px solid #455a64', color: '#cfd8dc', padding: '6px 10px', cursor: 'pointer', minHeight: 44 }}
+        style={{ position: 'fixed', top: `calc(8px + env(safe-area-inset-top, 0px))`, left: `calc(8px + env(safe-area-inset-left, 0px))`, zIndex: 10, fontFamily: 'Press Start 2P', fontSize: '8px', background: '#263238', border: '2px solid #455a64', color: '#cfd8dc', padding: '6px 10px', cursor: 'pointer', minHeight: 44 }}
       >
         Settings
       </button>
       {showSettings && <ParentSettings onClose={() => setShowSettings(false)} />}
       <DPad />
+      <div className="rotate-hint">
+        <span>📱</span>
+        Rotate your device<br />to landscape mode
+      </div>
     </div>
   )
 }

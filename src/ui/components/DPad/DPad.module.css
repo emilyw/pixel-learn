@@ -1,7 +1,7 @@
 .dpad {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: calc(20px + env(safe-area-inset-left, 0px));
   z-index: 10;
   display: grid;
   grid-template-columns: 44px 44px 44px;

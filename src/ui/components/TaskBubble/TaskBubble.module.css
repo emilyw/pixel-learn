@@ -2,29 +2,21 @@
   position: fixed;
   inset: 0;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
 }
 
 .bubble {
-  position: absolute;
+  position: relative;
   background: #1a1a2e;
   border: 3px solid #69f0ae;
   padding: 12px;
   width: 260px;
-  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
   pointer-events: all;
   image-rendering: pixelated;
-}
-
-.bubble::after {
-  content: '';
-  position: absolute;
-  bottom: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 12px solid #69f0ae;
 }
 
 .npcHeader {

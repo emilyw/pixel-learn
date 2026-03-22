@@ -85,11 +85,10 @@ export function TaskBubble() {
   if (!interaction) return null
 
   const save = loadSave()
-  const bubbleTop = Math.max(20, interaction.screenY - 220)
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.bubble} style={{ left: interaction.screenX, top: bubbleTop }}>
+      <div className={styles.bubble}>
         <button className={styles.dismiss} onClick={handleDismiss}>&#x2715;</button>
         <div className={styles.npcHeader}>
           <span>{interaction.npcName} says:</span>
