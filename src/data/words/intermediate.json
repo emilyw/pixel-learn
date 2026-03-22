@@ -1,0 +1,17 @@
+[
+  { "word": "cloud",  "emoji": "☁️",  "npcIds": ["mossy", "doodle"],           "distractors": [] },
+  { "word": "plant",  "emoji": "🌱",  "npcIds": ["mossy"],                      "distractors": [] },
+  { "word": "grape",  "emoji": "🍇",  "npcIds": ["biscuit"],                    "distractors": [] },
+  { "word": "storm",  "emoji": "⛈️",  "npcIds": ["mossy", "blaze"],             "distractors": [] },
+  { "word": "chess",  "emoji": "♟️",  "npcIds": ["blaze", "professor-hoot"],    "distractors": [] },
+  { "word": "flame",  "emoji": "🔥",  "npcIds": ["blaze"],                      "distractors": [] },
+  { "word": "swim",   "emoji": "🏊",  "npcIds": ["coach-roar", "ripple"],       "distractors": [] },
+  { "word": "score",  "emoji": "🏆",  "npcIds": ["coach-roar"],                 "distractors": [] },
+  { "word": "brush",  "emoji": "🖌️",  "npcIds": ["doodle"],                     "distractors": [] },
+  { "word": "shape",  "emoji": "🔷",  "npcIds": ["doodle", "professor-hoot"],   "distractors": [] },
+  { "word": "house",  "emoji": "🏠",  "npcIds": ["mittens", "clover"],          "distractors": [] },
+  { "word": "hello",  "emoji": "👋",  "npcIds": ["mayor-hop"],                  "distractors": [] },
+  { "word": "water",  "emoji": "💧",  "npcIds": ["ripple", "mossy"],            "distractors": [] },
+  { "word": "seven",  "emoji": "7️⃣",  "npcIds": ["professor-hoot"],             "distractors": [] },
+  { "word": "eight",  "emoji": "8️⃣",  "npcIds": ["professor-hoot"],             "distractors": [] }
+]

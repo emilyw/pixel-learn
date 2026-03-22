@@ -1,0 +1,17 @@
+[
+  { "word": "forest",   "emoji": "🌲", "npcIds": ["mossy"],                      "distractors": [] },
+  { "word": "library",  "emoji": "📚", "npcIds": ["blaze"],                      "distractors": [] },
+  { "word": "garden",   "emoji": "🌻", "npcIds": ["mossy"],                      "distractors": [] },
+  { "word": "kitchen",  "emoji": "🍳", "npcIds": ["biscuit"],                    "distractors": [] },
+  { "word": "dragon",   "emoji": "🐉", "npcIds": ["blaze"],                      "distractors": [] },
+  { "word": "rocket",   "emoji": "🚀", "npcIds": ["professor-hoot"],             "distractors": [] },
+  { "word": "village",  "emoji": "🏘️", "npcIds": ["mayor-hop"],                  "distractors": [] },
+  { "word": "school",   "emoji": "🏫", "npcIds": ["professor-hoot"],             "distractors": [] },
+  { "word": "basket",   "emoji": "🧺", "npcIds": ["biscuit", "mittens"],         "distractors": [] },
+  { "word": "penguin",  "emoji": "🐧", "npcIds": ["ripple"],                     "distractors": [] },
+  { "word": "rainbow",  "emoji": "🌈", "npcIds": ["doodle", "mossy"],            "distractors": [] },
+  { "word": "thunder",  "emoji": "⛈️", "npcIds": ["coach-roar"],                 "distractors": [] },
+  { "word": "blanket",  "emoji": "🛏️", "npcIds": ["mittens", "clover"],          "distractors": [] },
+  { "word": "captain",  "emoji": "⚓", "npcIds": ["ripple"],                     "distractors": [] },
+  { "word": "morning",  "emoji": "🌅", "npcIds": ["mayor-hop"],                  "distractors": [] }
+]

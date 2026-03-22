@@ -1,0 +1,103 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  background: #1a1a2e;
+  border: 3px solid #69f0ae;
+  padding: 12px;
+  width: 260px;
+  transform: translateX(-50%);
+  pointer-events: all;
+  image-rendering: pixelated;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 12px solid #69f0ae;
+}
+
+.npcHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #a5d6a7;
+}
+
+.emoji { font-size: 28px; }
+
+.clue {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.dismiss {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.choices {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.choiceBtn {
+  background: #1565c0;
+  border: 2px solid #42a5f5;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  padding: 8px 12px;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.choiceBtn:hover { background: #1976d2; }
+.choiceBtn.correct { border-color: #69f0ae; animation: glow 1s ease-in-out; }
+.choiceBtn.wrong   { animation: shake 0.3s ease-in-out; }
+.choiceBtn.disabled { opacity: 0.35; pointer-events: none; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+
+@keyframes glow {
+  0%,100% { box-shadow: none; }
+  50%     { box-shadow: 0 0 8px #69f0ae; }
+}
+
+.message {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #ffeb3b;
+  text-align: center;
+  margin-top: 6px;
+  min-height: 14px;
+}
