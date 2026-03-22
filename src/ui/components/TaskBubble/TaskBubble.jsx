@@ -54,6 +54,27 @@ export function TaskBubble() {
         }
       }
 
+      // 10% chance of pond mission request
+      if (Math.random() < 0.1 && !save.activeMission) {
+        const bank = BANKS[save.skillLevel]
+        const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+        const pondMission = {
+          type: 'pond',
+          word: wordEntry.word.toUpperCase(),
+          npcId,
+          npcName,
+        }
+        const updated = { ...save, activeMission: pondMission }
+        writeSave(updated)
+        EventBus.emit('save-updated')
+        setInteraction({
+          npcId, npcName, screenX, screenY,
+          pondRequest: wordEntry.word,
+        })
+        EventBus.emit('task-open')
+        return
+      }
+
       const bank = BANKS[save.skillLevel]
       const recent = recentWords[npcId] || []
       const wordEntry = selectWord(bank, npcId, recent)
@@ -147,6 +168,25 @@ export function TaskBubble() {
           </div>
           <button className={styles.dismiss} onClick={handleDismiss} style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
             OK, I&apos;ll find it!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.pondRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            I dropped my special word in the pond! Can you swim in and find it?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss}
+            style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll go swimming!
           </button>
         </div>
       </div>
