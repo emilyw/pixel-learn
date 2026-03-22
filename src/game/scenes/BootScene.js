@@ -40,7 +40,7 @@ export class BootScene extends Scene {
 
     // --- NPC spritesheets ---
     NPCS.forEach((npc) => {
-      const filename = npc.sprite.replace('npc_', 'npc-')
+      const filename = 'npc-' + npc.id
       this.load.spritesheet(npc.sprite, `assets/sprites/${filename}.png`, {
         frameWidth: 32,
         frameHeight: 32,
