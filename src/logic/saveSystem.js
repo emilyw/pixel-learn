@@ -17,6 +17,9 @@ export const DEFAULT_SAVE = {
   unlockedBooks: [1, 2, 3, 4],
   completedDeliveries: 0,
   booksRead: [],
+  pondWordsSpelled: 0,
+  pondWordsToday: 0,
+  goldenLettersFound: 0,
 }
 
 export function loadSave() {
