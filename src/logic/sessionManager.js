@@ -11,6 +11,7 @@ export function checkDailyReset(save, today = todayString()) {
     dailyQuestProgress: 0,
     dailyQuestComplete: false,
     pondWordsToday: 0,
+    treesChoppedToday: 0,
   }
 }
 

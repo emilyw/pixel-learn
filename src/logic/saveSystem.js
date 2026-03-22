@@ -20,6 +20,8 @@ export const DEFAULT_SAVE = {
   pondWordsSpelled: 0,
   pondWordsToday: 0,
   goldenLettersFound: 0,
+  treesChopped: 0,
+  treesChoppedToday: 0,
 }
 
 export function loadSave() {
