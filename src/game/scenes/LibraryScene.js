@@ -9,7 +9,7 @@ export class LibraryScene extends Scene {
 
   create() {
     const W = 480, H = 320
-    this.physics.world.setBounds(40, 60, W - 80, H - 60)
+    this.physics.world.setBounds(40, 60, W - 80, 280)
 
     // --- floor ---
     this.add.rectangle(W / 2, H / 2, W, H, 0x8d6e63)
@@ -51,14 +51,15 @@ export class LibraryScene extends Scene {
       EventBus.emit('task-open')
     })
 
-    // --- librarian ---
-    const librarian = this.add.rectangle(W / 2, 95, 24, 28, 0x8d6e63)
-    librarian.setStrokeStyle(2, 0xd7ccc8)
+    // --- librarian (uses Professor Hoot sprite) ---
+    const librarian = this.add.sprite(W / 2, 95, 'npc_professor_hoot', 8)
+    librarian.setTint(0xff8f00)
+    librarian.setDepth(5)
     // librarian label
     this.add.text(W / 2, 75, 'Librarian', {
       fontFamily: '"Press Start 2P"', fontSize: '6px', color: '#ffffff',
       stroke: '#000000', strokeThickness: 2,
-    }).setOrigin(0.5, 1)
+    }).setOrigin(0.5, 1).setDepth(6)
 
     const librarianZone = this.add.rectangle(W / 2, 95, 40, 40)
     librarianZone.setInteractive({ useHandCursor: true })
@@ -111,7 +112,7 @@ export class LibraryScene extends Scene {
     this.player.update()
 
     // Exit zone: walk to bottom edge
-    if (this.player.y > 310) {
+    if (this.player.y > 300) {
       EventBus.emit('exit-library')
       this.scene.start('WorldScene', { returnTo: { x: 800, y: 266 } })
     }
