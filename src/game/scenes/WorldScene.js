@@ -596,28 +596,46 @@ export class WorldScene extends Scene {
     })
 
     // Select word
-    let pondWord
+    let pondWord, pondEmoji
     if (save.activeMission && save.activeMission.type === 'pond') {
       pondWord = save.activeMission.word
+      pondEmoji = save.activeMission.emoji || ''
     } else {
       const bank = this._wordBanks[save.skillLevel]
       const wordEntry = bank[Math.floor(Math.random() * bank.length)]
       pondWord = wordEntry.word.toUpperCase()
+      pondEmoji = wordEntry.emoji || ''
     }
     this._pondWord = pondWord
+    this._pondEmoji = pondEmoji
     this._pondLettersCollected = 0
     this._pondGoldenIndex = Math.random() < 0.2 ? Math.floor(Math.random() * this._pondWord.length) : -1
     this._pondFoundGolden = false
     this._pondWrongLetters = 0
 
-    // Spawn letter tiles
-    this._spawnLetterTiles()
+    // Flash duration: shorter for harder words
+    const flashMs = save.skillLevel === 'beginner' ? 3000
+      : save.skillLevel === 'intermediate' ? 2000 : 1500
 
-    // Unblock player for swimming
-    this.player.setBlocked(false)
+    // Emit event for React HUD — word shown briefly then hidden
+    EventBus.emit('pond-enter', { word: this._pondWord, emoji: pondEmoji, flashMs })
 
-    // Emit event for React HUD
-    EventBus.emit('pond-enter', { word: this._pondWord })
+    // Speak the word aloud
+    try {
+      if (save.audioEnabled) {
+        window.speechSynthesis.cancel()
+        const utt = new SpeechSynthesisUtterance(this._pondWord.toLowerCase())
+        utt.rate = 0.8
+        utt.pitch = 1.1
+        window.speechSynthesis.speak(utt)
+      }
+    } catch (_) { /* speech not available */ }
+
+    // Delay letter tile spawning + player unblock until after flash
+    this.time.delayedCall(flashMs, () => {
+      this._spawnLetterTiles()
+      this.player.setBlocked(false)
+    })
   }
 
   _spawnLetterTiles() {
@@ -653,10 +671,10 @@ export class WorldScene extends Scene {
   }
 
   _createLetterTile(x, y, letter, index, isCorrect, isGolden) {
+    // All tiles look the same — no visual hint which are correct
     const bg = this.add.rectangle(x, y, 18, 18, isGolden ? 0xffd700 : 0x1565c0)
     bg.setStrokeStyle(1, isGolden ? 0xffab00 : 0x0d47a1)
     bg.setDepth(95)
-    bg.setAlpha(isCorrect ? 1 : 0.6)
 
     const text = this.add.text(x, y, letter, {
       fontFamily: '"Press Start 2P"', fontSize: '9px',
@@ -744,7 +762,7 @@ export class WorldScene extends Scene {
             const ny = b.y + 10 + Math.random() * (b.height - 20)
             tile.bg.setPosition(nx, ny)
             tile.text.setPosition(nx, ny)
-            tile.bg.setAlpha(tile.isCorrect ? 1 : 0.6)
+            tile.bg.setAlpha(1)
             tile.text.setAlpha(1)
             tile.collected = false
             tile.bobTween = this.tweens.add({

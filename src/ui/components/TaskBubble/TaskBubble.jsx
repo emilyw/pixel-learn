@@ -61,6 +61,7 @@ export function TaskBubble() {
         const pondMission = {
           type: 'pond',
           word: wordEntry.word.toUpperCase(),
+          emoji: wordEntry.emoji || '',
           npcId,
           npcName,
         }
