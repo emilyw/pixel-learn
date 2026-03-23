@@ -164,6 +164,39 @@ export class WorldScene extends Scene {
     this.events.on('shutdown', () => {
       if (this._swimming) this._exitPond(false)
     })
+
+    // --- tree cutting (chop) ---
+    // Bottom-left tree cluster: tiles (7-9, 28-29) → pixels (112-144, 448-464)
+    this._chopBounds = { x: 112, y: 400, width: 96, height: 64 }
+    this._chopCenter = { x: 160, y: 432 }
+    this._chopEdge = { x: 104, y: 440 }
+    this._chopping = false
+    this._chopStumps = null
+    this._chopCycleTimer = null
+
+    // Timber the Beaver - standalone NPC (not in NPCS array)
+    const timber = this.add.sprite(104, 440, 'npc_coach_roar', 8)
+    timber.setTint(0x8D6E63)
+    timber.setScale(0.7)
+    timber.setDepth(90)
+    this.add.text(104, 424, 'Timber', {
+      fontFamily: '"Press Start 2P"', fontSize: '6px', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5, 1).setDepth(91)
+
+    // Axe visual at exit point
+    this.add.text(this._chopEdge.x + 24, this._chopEdge.y, '🪓', {
+      fontSize: '10px',
+    }).setOrigin(0.5).setDepth(89)
+
+    // Timber click interaction
+    timber.setInteractive({ useHandCursor: true })
+    timber.on('pointerdown', () => this._tryEnterChop())
+
+    // Shutdown cleanup for chop
+    this.events.on('shutdown', () => {
+      if (this._chopping) this._exitChop(false)
+    })
   }
 
   _spawnNPC(def, x, y) {
@@ -465,6 +498,25 @@ export class WorldScene extends Scene {
         )
         if (edgeDist < 12) {
           this._exitPond(false)
+        }
+      }
+    }
+
+    // --- chop stump proximity ---
+    if (this._chopping && this._chopStumps) {
+      this._chopStumps.forEach(stump => {
+        if (!stump.active) return
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, stump.x, stump.y)
+        if (dist < 18) {
+          this._chopStump(stump)
+        }
+      })
+
+      // Early exit via axe sprite
+      if (this._chopEdge) {
+        const exitDist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this._chopEdge.x + 24, this._chopEdge.y)
+        if (exitDist < 12) {
+          this._exitChop(false)
         }
       }
     }
@@ -860,5 +912,473 @@ export class WorldScene extends Scene {
     if (this._playerArrow) this._playerArrow.setVisible(true)
 
     EventBus.emit('pond-exit', { completed })
+  }
+
+  _showTimberDialogue(msg) {
+    const dialogBg = this.add.rectangle(160, 385, 200, 40, 0x000000, 0.8)
+    dialogBg.setDepth(200).setStrokeStyle(1, 0x8D6E63)
+    const dialogText = this.add.text(160, 385, msg, {
+      fontFamily: '"Press Start 2P"', fontSize: '5px', color: '#ffffff',
+      wordWrap: { width: 190 }, align: 'center',
+    }).setOrigin(0.5).setDepth(201)
+    this.time.delayedCall(2500, () => {
+      dialogBg.destroy()
+      dialogText.destroy()
+    })
+  }
+
+  _tryEnterChop() {
+    const save = loadSave()
+    if (this._chopping || this._swimming) return
+    if (save.activeMission && save.activeMission.type !== 'chop') {
+      this._showTimberDialogue('Finish what you\'re doing first, then come chop!')
+      return
+    }
+    if (isDailyCapped(save)) {
+      this._showTimberDialogue('You\'ve chopped enough for today! Come back tomorrow.')
+      return
+    }
+    if (!this._timberVisited) {
+      this._showTimberDialogue('Want to chop some wood? Letters pop up on the stumps — chop them in order!')
+      this._timberVisited = true
+    }
+    this._enterChop(save)
+  }
+
+  _enterChop(save) {
+    this._chopping = true
+    this.player.setBlocked(true)
+
+    if (this._collider) this._collider.active = false
+
+    this.player.setPosition(this._chopCenter.x, this._chopCenter.y)
+    if (this._playerArrow) this._playerArrow.setVisible(false)
+
+    this.cameras.main.shake(50, 0.005)
+    const chopText = this.add.text(this._chopCenter.x, this._chopCenter.y - 20, 'CHOP!', {
+      fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ffffff',
+      stroke: '#8d6e63', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(105)
+    this.tweens.add({
+      targets: chopText, alpha: 0, y: chopText.y - 30,
+      duration: 1000, ease: 'Sine.easeOut',
+      onComplete: () => chopText.destroy(),
+    })
+
+    this.player.setChopMode(this._chopBounds)
+    this.player.setDepth(100)
+
+    let chopWord, chopEmoji
+    if (save.activeMission && save.activeMission.type === 'chop') {
+      chopWord = save.activeMission.word.toLowerCase()
+      chopEmoji = save.activeMission.emoji || ''
+    } else {
+      const bank = this._wordBanks[save.skillLevel]
+      const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+      chopWord = wordEntry.word.toLowerCase()
+      chopEmoji = wordEntry.emoji || ''
+    }
+    this._chopWord = chopWord
+    this._chopEmoji = chopEmoji
+    this._chopLettersCollected = 0
+    this._chopGoldenIndex = Math.random() < 0.1 ? Math.floor(Math.random() * chopWord.length) : -1
+    this._chopFoundGolden = false
+    this._chopWrongCount = 0
+    this._chopCyclesMissed = 0
+
+    const flashMs = save.skillLevel === 'beginner' ? 3000
+      : save.skillLevel === 'intermediate' ? 2000 : 1500
+
+    EventBus.emit('chop-enter', { word: chopWord, emoji: chopEmoji, flashMs })
+
+    try {
+      if (save.audioEnabled) {
+        window.speechSynthesis.cancel()
+        const utt = new SpeechSynthesisUtterance(chopWord)
+        utt.rate = 0.8
+        utt.pitch = 1.1
+        window.speechSynthesis.speak(utt)
+      }
+    } catch (_) { /* speech not available */ }
+
+    this.time.delayedCall(flashMs, () => {
+      this._spawnStumps()
+      this._startStumpCycle()
+      this.player.setBlocked(false)
+    })
+  }
+
+  _spawnStumps() {
+    this._chopStumps = []
+    const bounds = this._chopBounds
+    const cols = 3, rows = 2
+    const spacingX = 28, spacingY = 24
+    const startX = bounds.x + (bounds.width - (cols - 1) * spacingX) / 2
+    const startY = bounds.y + (bounds.height - (rows - 1) * spacingY) / 2
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = startX + c * spacingX
+        const y = startY + r * spacingY
+        const stump = this._createStump(x, y)
+        this._chopStumps.push(stump)
+      }
+    }
+  }
+
+  _createStump(x, y) {
+    const bg = this.add.rectangle(x, y, 14, 14, 0x5d4037)
+    bg.setStrokeStyle(1, 0x3e2723)
+    bg.setDepth(95)
+
+    const text = this.add.text(x, y, '', {
+      fontFamily: '"Press Start 2P"', fontSize: '9px', color: '#ffffff',
+    }).setOrigin(0.5).setDepth(96)
+    text.setVisible(false)
+
+    return { bg, text, x, y, active: false, letter: null, isCorrect: false, isGolden: false, popTween: null, pulseTween: null, hideTween: null }
+  }
+
+  _startStumpCycle() {
+    const save = loadSave()
+    const skill = save.skillLevel
+    const popDuration = skill === 'beginner' ? 2000 : skill === 'intermediate' ? 1500 : 1200
+    const cycleInterval = skill === 'beginner' ? 2500 : skill === 'intermediate' ? 2000 : 1500
+    const activeCount = skill === 'advanced' ? 3 : 2
+
+    this._chopPopDuration = popDuration
+    this._chopActiveCount = activeCount
+
+    this._chopCycleTimer = this.time.addEvent({
+      delay: cycleInterval,
+      loop: true,
+      callback: () => this._runStumpCycle(),
+    })
+
+    this._runStumpCycle()
+  }
+
+  _runStumpCycle() {
+    if (!this._chopping || !this._chopStumps) return
+
+    // Hide any currently active stumps
+    this._chopStumps.forEach(s => {
+      if (s.active) this._hideStumpLetter(s)
+    })
+
+    const idle = this._chopStumps.filter(s => !s.active)
+    if (idle.length === 0) return
+
+    const count = Math.min(this._chopActiveCount, idle.length)
+    const shuffled = [...idle].sort(() => Math.random() - 0.5)
+    const chosen = []
+
+    const nextLetter = this._chopWord[this._chopLettersCollected]
+    const forceCorrect = this._chopCyclesMissed >= 2
+    const showCorrect = forceCorrect || Math.random() < 0.6
+
+    if (showCorrect && count > 0) {
+      const isGolden = this._chopLettersCollected === this._chopGoldenIndex
+      this._showStumpLetter(shuffled[0], nextLetter, true, isGolden)
+      chosen.push(shuffled[0])
+      this._chopCyclesMissed = 0
+    } else {
+      this._chopCyclesMissed++
+    }
+
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    for (let i = chosen.length; i < count; i++) {
+      const stump = shuffled[i]
+      if (!stump) break
+      let decoy
+      do {
+        decoy = alphabet[Math.floor(Math.random() * 26)]
+      } while (decoy === nextLetter)
+      this._showStumpLetter(stump, decoy, false, false)
+    }
+
+    this.time.delayedCall(this._chopPopDuration, () => {
+      if (!this._chopping) return
+      this._chopStumps.forEach(s => {
+        if (s.active) this._hideStumpLetter(s)
+      })
+    })
+  }
+
+  _showStumpLetter(stump, letter, isCorrect, isGolden) {
+    stump.active = true
+    stump.letter = letter
+    stump.isCorrect = isCorrect
+    stump.isGolden = isGolden
+
+    stump.bg.setFillStyle(isGolden ? 0xffd700 : 0x8d6e63)
+    stump.bg.setStrokeStyle(1, isGolden ? 0xffab00 : 0x6d4c41)
+
+    stump.text.setText(letter)
+    stump.text.setVisible(true)
+    stump.text.setScale(0)
+    stump.text.setAlpha(1)
+    stump.text.setColor(isGolden ? '#3e2723' : '#ffffff')
+
+    stump.popTween = this.tweens.add({
+      targets: stump.text,
+      scale: 1,
+      duration: 200,
+      ease: 'Back.easeOut',
+    })
+
+    stump.pulseTween = this.tweens.add({
+      targets: stump.bg,
+      alpha: 0.7,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    })
+  }
+
+  _hideStumpLetter(stump) {
+    if (!stump.active) return
+    stump.active = false
+
+    if (stump.popTween) { stump.popTween.stop(); stump.popTween = null }
+    if (stump.pulseTween) { stump.pulseTween.stop(); stump.pulseTween = null }
+
+    stump.hideTween = this.tweens.add({
+      targets: stump.text,
+      scale: 0,
+      duration: 150,
+      onComplete: () => {
+        stump.text.setVisible(false)
+        stump.text.setText('')
+        stump.hideTween = null
+      },
+    })
+
+    stump.bg.setFillStyle(0x5d4037)
+    stump.bg.setStrokeStyle(1, 0x3e2723)
+    stump.bg.setAlpha(1)
+    stump.letter = null
+    stump.isCorrect = false
+    stump.isGolden = false
+  }
+
+  _chopStump(stump) {
+    if (!stump.active) return
+
+    const nextLetter = this._chopWord[this._chopLettersCollected]
+
+    if (stump.isCorrect && stump.letter === nextLetter) {
+      const isGolden = stump.isGolden
+      if (isGolden) this._chopFoundGolden = true
+
+      if (stump.popTween) stump.popTween.stop()
+      if (stump.pulseTween) stump.pulseTween.stop()
+      stump.active = false
+
+      // Wood chip particles
+      for (let p = 0; p < 4; p++) {
+        const chip = this.add.rectangle(stump.x, stump.y, 4, 3, 0xa1887f)
+        chip.setDepth(97)
+        this.tweens.add({
+          targets: chip,
+          x: stump.x + (Math.random() - 0.5) * 30,
+          y: stump.y - 10 - Math.random() * 15,
+          alpha: 0, angle: Math.random() * 360,
+          duration: 400 + Math.random() * 200,
+          onComplete: () => chip.destroy(),
+        })
+      }
+
+      // Split animation: squish + green flash
+      stump.bg.setFillStyle(0x4caf50)
+      this.tweens.add({
+        targets: stump.bg,
+        scaleX: 0.5,
+        duration: 150,
+        yoyo: true,
+        onComplete: () => {
+          stump.bg.setFillStyle(0x5d4037)
+          stump.bg.setStrokeStyle(1, 0x3e2723)
+          stump.bg.setAlpha(1)
+          stump.bg.setScale(1)
+        },
+      })
+
+      // Letter flies up and fades
+      this.tweens.add({
+        targets: stump.text,
+        y: stump.y - 20, alpha: 0, scale: 1.5,
+        duration: 400,
+        onComplete: () => {
+          stump.text.setVisible(false)
+          stump.text.setPosition(stump.x, stump.y)
+          stump.text.setScale(1)
+          stump.text.setAlpha(1)
+          stump.text.setText('')
+        },
+      })
+
+      stump.letter = null
+      stump.isCorrect = false
+      stump.isGolden = false
+
+      this._chopLettersCollected++
+      EventBus.emit('chop-letter-collect', {
+        letter: nextLetter,
+        index: this._chopLettersCollected - 1,
+        isGolden,
+        isCorrect: true,
+      })
+
+      // Speak the letter
+      try {
+        const audioSave = loadSave()
+        if (audioSave.audioEnabled) {
+          window.speechSynthesis.cancel()
+          const utt = new SpeechSynthesisUtterance(nextLetter)
+          utt.rate = 0.9
+          utt.pitch = 1.2
+          window.speechSynthesis.speak(utt)
+        }
+      } catch (_) { /* speech not available */ }
+
+      if (this._chopLettersCollected >= this._chopWord.length) {
+        this._completeChopWord()
+      }
+    } else {
+      // Wrong chop
+      this._chopWrongCount++
+      EventBus.emit('chop-letter-collect', {
+        letter: stump.letter,
+        index: -1,
+        isGolden: false,
+        isCorrect: false,
+      })
+
+      const origX = stump.bg.x
+      stump.bg.setFillStyle(0xd32f2f)
+      this.tweens.add({
+        targets: [stump.bg, stump.text],
+        x: origX + 3,
+        duration: 50,
+        yoyo: true,
+        repeat: 3,
+        onComplete: () => {
+          stump.bg.x = origX
+          stump.text.x = origX
+          if (stump.active) {
+            stump.bg.setFillStyle(stump.isGolden ? 0xffd700 : 0x8d6e63)
+          }
+        },
+      })
+    }
+  }
+
+  _completeChopWord() {
+    this.player.setBlocked(true)
+
+    if (this._chopCycleTimer) {
+      this._chopCycleTimer.remove()
+      this._chopCycleTimer = null
+    }
+
+    if (this._chopStumps) {
+      this._chopStumps.forEach(s => {
+        if (s.active) this._hideStumpLetter(s)
+      })
+    }
+
+    const timberText = this.add.text(this._chopCenter.x, this._chopCenter.y - 30, 'Timber!', {
+      fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#ffeb3b',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(110).setScale(0)
+
+    this.tweens.add({
+      targets: timberText, scale: 1, y: timberText.y - 10,
+      duration: 500, ease: 'Bounce.easeOut',
+    })
+    this.tweens.add({
+      targets: timberText, alpha: 0,
+      duration: 500, delay: 1000,
+      onComplete: () => timberText.destroy(),
+    })
+
+    if (this._chopStumps) {
+      this._chopStumps.forEach(s => {
+        this.tweens.add({
+          targets: s.bg, y: s.y - 6,
+          duration: 200, yoyo: true,
+          ease: 'Bounce.easeOut',
+        })
+      })
+    }
+
+    let hearts
+    let save = loadSave()
+    if (save.activeMission && save.activeMission.type === 'chop') {
+      if (this._chopWrongCount <= 1) hearts = 3
+      else if (this._chopWrongCount <= 3) hearts = 2
+      else hearts = 1
+      save.activeMission = null
+    } else {
+      hearts = 1
+    }
+    if (this._chopFoundGolden) hearts++
+
+    save.treesChopped = (save.treesChopped || 0) + 1
+    save.treesChoppedToday = (save.treesChoppedToday || 0) + 1
+    if (this._chopFoundGolden) {
+      save.goldenLettersFound = (save.goldenLettersFound || 0) + 1
+    }
+
+    save = addDailyHearts(save, hearts)
+    save = incrementQuestProgress(save)
+    writeSave(save)
+    EventBus.emit('save-updated')
+    EventBus.emit('hearts-earned', {
+      amount: hearts,
+      screenX: this.scale.width / 2,
+      screenY: this.scale.height / 2,
+    })
+
+    if (isDailyCapped(save)) {
+      EventBus.emit('daily-cap-reached')
+    }
+
+    EventBus.emit('chop-word-complete', { word: this._chopWord, heartsEarned: hearts })
+
+    this.time.delayedCall(1200, () => {
+      this._exitChop(true)
+    })
+  }
+
+  _exitChop(completed) {
+    if (this._chopCycleTimer) {
+      this._chopCycleTimer.remove()
+      this._chopCycleTimer = null
+    }
+
+    if (this._chopStumps) {
+      this._chopStumps.forEach(stump => {
+        if (stump.popTween) stump.popTween.stop()
+        if (stump.pulseTween) stump.pulseTween.stop()
+        if (stump.hideTween) stump.hideTween.stop()
+        if (stump.bg && stump.bg.scene) stump.bg.destroy()
+        if (stump.text && stump.text.scene) stump.text.destroy()
+      })
+      this._chopStumps = null
+    }
+
+    this.player.clearChopMode()
+    this._chopping = false
+
+    if (this._collider) this._collider.active = true
+
+    this.player.setPosition(this._chopEdge.x, this._chopEdge.y)
+    this.player.setBlocked(false)
+
+    if (this._playerArrow) this._playerArrow.setVisible(true)
+
+    EventBus.emit('chop-exit', { completed })
   }
 }
