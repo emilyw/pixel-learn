@@ -76,6 +76,28 @@ export function TaskBubble() {
         return
       }
 
+      // 20% chance of chop mission request
+      if (Math.random() < 0.2 && !save.activeMission) {
+        const bank = BANKS[save.skillLevel]
+        const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+        const chopMission = {
+          type: 'chop',
+          word: wordEntry.word.toLowerCase(),
+          emoji: wordEntry.emoji || '',
+          npcId,
+          npcName,
+        }
+        const updated = { ...save, activeMission: chopMission }
+        writeSave(updated)
+        EventBus.emit('save-updated')
+        setInteraction({
+          npcId, npcName, screenX, screenY,
+          chopRequest: wordEntry.word,
+        })
+        EventBus.emit('task-open')
+        return
+      }
+
       const bank = BANKS[save.skillLevel]
       const recent = recentWords[npcId] || []
       const wordEntry = selectWord(bank, npcId, recent)
@@ -188,6 +210,25 @@ export function TaskBubble() {
           <button className={styles.dismiss} onClick={handleDismiss}
             style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
             OK, I&apos;ll go swimming!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.chopRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            Can you chop me some wood with &quot;{interaction.chopRequest}&quot; carved in it?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss}
+            style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll go chop!
           </button>
         </div>
       </div>
