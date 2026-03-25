@@ -70,6 +70,21 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.clearTint()
   }
 
+  setGardenMode(bounds) {
+    this._gardening = true
+    this._gardenBounds = bounds
+    this._origSpeed = this.speed
+    this.speed = 60
+    this.setTint(0x7cb342)
+  }
+
+  clearGardenMode() {
+    this._gardening = false
+    this._gardenBounds = null
+    this.speed = this._origSpeed || 80
+    this.clearTint()
+  }
+
   update() {
     if (this._blocked) return
     const k = this._keys
@@ -105,6 +120,14 @@ export class Player extends Phaser.GameObjects.Sprite {
       const b = this._chopBounds
       this.x = Phaser.Math.Clamp(this.x, b.x, b.x + b.width)
       this.y = Phaser.Math.Clamp(this.y, b.y, b.y + b.height)
+    }
+
+    // Clamp to garden bounds if gardening (horizontal only, y locked)
+    if (this._gardening && this._gardenBounds) {
+      const b = this._gardenBounds
+      this.x = Phaser.Math.Clamp(this.x, b.x, b.x + b.width)
+      this.y = b.y + b.height - 10
+      this.body.velocity.y = 0
     }
   }
 }
