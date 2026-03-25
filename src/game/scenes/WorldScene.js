@@ -8,6 +8,7 @@ import { isDailyCapped, addDailyHearts, incrementQuestProgress } from '../../log
 import beginnerBank from '../../data/words/beginner.json'
 import intermediateBank from '../../data/words/intermediate.json'
 import advancedBank from '../../data/words/advanced.json'
+import { setupGarden, updateGarden } from '../helpers/gardenHelper'
 
 export class WorldScene extends Scene {
   constructor() { super('WorldScene') }
@@ -197,6 +198,9 @@ export class WorldScene extends Scene {
     this.events.on('shutdown', () => {
       if (this._chopping) this._exitChop(false)
     })
+
+    // --- garden planting ---
+    setupGarden(this)
   }
 
   _spawnNPC(def, x, y) {
@@ -521,6 +525,9 @@ export class WorldScene extends Scene {
       }
     }
 
+    // --- garden update ---
+    updateGarden(this)
+
     // Update mini map overlay
     if (this._mmOverlay) {
       const ov = this._mmOverlay
@@ -578,7 +585,7 @@ export class WorldScene extends Scene {
 
   _tryEnterPond() {
     const save = loadSave()
-    if (this._swimming) return
+    if (this._swimming || this._chopping || this._gardening) return
     if (save.activeMission && save.activeMission.type !== 'pond') {
       this._showBubblesDialogue('Finish what you\'re doing first, then come swim!')
       EventBus.emit('pond-denied', { reason: 'active-mission' })
@@ -929,7 +936,7 @@ export class WorldScene extends Scene {
 
   _tryEnterChop() {
     const save = loadSave()
-    if (this._chopping || this._swimming) return
+    if (this._chopping || this._swimming || this._gardening) return
     if (save.activeMission && save.activeMission.type !== 'chop') {
       this._showTimberDialogue('Finish what you\'re doing first, then come chop!')
       return
