@@ -22,6 +22,8 @@ export const DEFAULT_SAVE = {
   goldenLettersFound: 0,
   treesChopped: 0,
   treesChoppedToday: 0,
+  plantsGrown: 0,
+  plantsGrownToday: 0,
 }
 
 export function loadSave() {
