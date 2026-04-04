@@ -3,6 +3,7 @@ import Phaser from 'phaser'
 import { BootScene } from './scenes/BootScene'
 import { SplashScene } from './scenes/SplashScene'
 import { WorldScene } from './scenes/WorldScene'
+import { LibraryScene } from './scenes/LibraryScene'
 
 const config = {
   type: Phaser.AUTO,
@@ -18,7 +19,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, SplashScene, WorldScene],
+  scene: [BootScene, SplashScene, WorldScene, LibraryScene],
 }
 
 export function PhaserGame() {

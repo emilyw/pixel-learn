@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EventBus } from '../../../game/EventBus'
 import { loadSave, writeSave } from '../../../logic/saveSystem'
+import { isAudioEnabled } from '../../../logic/audioService'
 import styles from './MayorHopMessage.module.css'
 
 const MESSAGES = {
@@ -14,9 +15,18 @@ export function MayorHopMessage() {
   const [messageType, setMessageType] = useState(null)
 
   useEffect(() => {
-    const onMayor = ({ type }) => setMessageType(type)
-    const onQuest = () => setMessageType('quest-complete')
-    const onCap = () => setMessageType('daily-cap')
+    function speak(type) {
+      if (isAudioEnabled() && MESSAGES[type]) {
+        window.speechSynthesis.cancel()
+        const utt = new SpeechSynthesisUtterance(MESSAGES[type])
+        utt.rate = 0.85
+        utt.pitch = 1.1
+        window.speechSynthesis.speak(utt)
+      }
+    }
+    const onMayor = ({ type }) => { setMessageType(type); speak(type) }
+    const onQuest = () => { setMessageType('quest-complete'); speak('quest-complete') }
+    const onCap = () => { setMessageType('daily-cap'); speak('daily-cap') }
     EventBus.on('show-mayor-message', onMayor)
     EventBus.on('quest-complete', onQuest)
     EventBus.on('daily-cap-reached', onCap)

@@ -1,0 +1,104 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  background: #1a1a2e;
+  border: 3px solid #69f0ae;
+  padding: 12px;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  pointer-events: all;
+}
+
+.title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #a5d6a7;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.bookList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.bookItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 2px solid #333;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.bookItem:hover { border-color: #69f0ae; }
+
+.bookItem.locked {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bookSpine {
+  width: 12px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.bookTitle {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #fff;
+}
+
+.menuBtn {
+  display: block;
+  width: 100%;
+  background: #1565c0;
+  border: 2px solid #42a5f5;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  padding: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  min-height: 44px;
+  text-align: center;
+}
+
+.menuBtn:hover { background: #1976d2; }
+.menuBtn:disabled { opacity: 0.35; cursor: default; }
+
+.close {
+  display: block;
+  width: 100%;
+  background: #263238;
+  border: 2px solid #455a64;
+  color: #cfd8dc;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  padding: 8px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.message {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #ffeb3b;
+  text-align: center;
+  margin: 8px 0;
+}

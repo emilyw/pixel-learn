@@ -6,6 +6,12 @@ import { MayorHopMessage } from './ui/components/MayorHopMessage/MayorHopMessage
 import { UnlockModal } from './ui/components/UnlockModal/UnlockModal'
 import { ParentSettings } from './ui/components/ParentSettings/ParentSettings'
 import { DPad } from './ui/components/DPad/DPad'
+import { BookBrowser } from './ui/components/BookBrowser/BookBrowser'
+import { BookReader } from './ui/components/BookReader/BookReader'
+import { DeliveryBanner } from './ui/components/DeliveryBanner/DeliveryBanner'
+import { PondHUD } from './ui/components/PondHUD/PondHUD'
+import { ChopHUD } from './ui/components/ChopHUD/ChopHUD'
+import { GardenHUD } from './ui/components/GardenHUD/GardenHUD'
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false)
@@ -17,6 +23,12 @@ export default function App() {
       <TaskBubble />
       <MayorHopMessage />
       <UnlockModal />
+      <BookBrowser />
+      <BookReader />
+      <DeliveryBanner />
+      <PondHUD />
+      <ChopHUD />
+      <GardenHUD />
       <button
         onClick={() => setShowSettings(true)}
         style={{ position: 'fixed', top: `calc(8px + env(safe-area-inset-top, 0px))`, left: `calc(8px + env(safe-area-inset-left, 0px))`, zIndex: 10, fontFamily: 'Press Start 2P', fontSize: '8px', background: '#263238', border: '2px solid #455a64', color: '#cfd8dc', padding: '6px 10px', cursor: 'pointer', minHeight: 44 }}

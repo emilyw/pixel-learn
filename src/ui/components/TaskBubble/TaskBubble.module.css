@@ -85,6 +85,14 @@
   50%     { box-shadow: 0 0 8px #69f0ae; }
 }
 
+.praise {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: #ffeb3b;
+  text-align: center;
+  padding: 12px 0;
+}
+
 .message {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;

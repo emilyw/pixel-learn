@@ -4,6 +4,8 @@ import { loadSave, writeSave } from '../../../logic/saveSystem'
 import { addDailyHearts, incrementQuestProgress, isDailyCapped, getQuestTarget } from '../../../logic/sessionManager'
 import { getNewUnlocks } from '../../../logic/progressionEngine'
 import { selectWord } from '../../../logic/wordSelector'
+import { isAudioEnabled } from '../../../logic/audioService'
+import { generateNpcRequest } from '../../../logic/missionSystem'
 import { BeginnerTask } from './BeginnerTask'
 import { IntermediateTask } from './IntermediateTask'
 import { AdvancedTask } from './AdvancedTask'
@@ -19,13 +21,104 @@ const recentWords = {}
 
 const HEARTS_BY_ATTEMPT = [3, 2, 1]
 
+const PRAISE = [
+  'Great job!', 'You got it!', 'Amazing!', 'Well done!', 'Awesome!',
+  'Fantastic!', 'You\'re a star!', 'Brilliant!', 'Nailed it!', 'Super!',
+  'Way to go!', 'Nice work!', 'Perfect!', 'Wow, so smart!', 'You rock!',
+  'That\'s right!', 'Incredible!', 'Keep it up!', 'Wonderful!', 'Spot on!',
+]
+
 export function TaskBubble() {
   const [interaction, setInteraction] = useState(null)
+  const [praise, setPraise] = useState(null)
 
   useEffect(() => {
     const handler = ({ npcId, npcName, screenX, screenY }) => {
       const save = loadSave()
       if (isDailyCapped(save)) return
+
+      // 20% chance of book delivery request
+      if (Math.random() < 0.2 && !save.activeMission && !save.borrowedBook) {
+        const request = generateNpcRequest(save, npcId)
+        if (request) {
+          const updated = { ...save, activeMission: request.mission }
+          writeSave(updated)
+          EventBus.emit('save-updated')
+          EventBus.emit('mission-start', { mission: request.mission })
+          setInteraction({
+            npcId, npcName, screenX, screenY,
+            bookRequest: request.bookTopic,
+          })
+          EventBus.emit('task-open')
+          return
+        }
+      }
+
+      // 20% chance of pond mission request (same as book requests)
+      if (Math.random() < 0.2 && !save.activeMission) {
+        const bank = BANKS[save.skillLevel]
+        const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+        const pondMission = {
+          type: 'pond',
+          word: wordEntry.word.toLowerCase(),
+          emoji: wordEntry.emoji || '',
+          npcId,
+          npcName,
+        }
+        const updated = { ...save, activeMission: pondMission }
+        writeSave(updated)
+        EventBus.emit('save-updated')
+        setInteraction({
+          npcId, npcName, screenX, screenY,
+          pondRequest: wordEntry.word,
+        })
+        EventBus.emit('task-open')
+        return
+      }
+
+      // 20% chance of chop mission request
+      if (Math.random() < 0.2 && !save.activeMission) {
+        const bank = BANKS[save.skillLevel]
+        const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+        const chopMission = {
+          type: 'chop',
+          word: wordEntry.word.toLowerCase(),
+          emoji: wordEntry.emoji || '',
+          npcId,
+          npcName,
+        }
+        const updated = { ...save, activeMission: chopMission }
+        writeSave(updated)
+        EventBus.emit('save-updated')
+        setInteraction({
+          npcId, npcName, screenX, screenY,
+          chopRequest: wordEntry.word,
+        })
+        EventBus.emit('task-open')
+        return
+      }
+
+      // 15% chance of garden mission request
+      if (Math.random() < 0.15 && !save.activeMission) {
+        const bank = BANKS[save.skillLevel]
+        const wordEntry = bank[Math.floor(Math.random() * bank.length)]
+        const gardenMission = {
+          type: 'garden',
+          word: wordEntry.word.toLowerCase(),
+          emoji: wordEntry.emoji || '',
+          npcId,
+          npcName,
+        }
+        const updated = { ...save, activeMission: gardenMission }
+        writeSave(updated)
+        EventBus.emit('save-updated')
+        setInteraction({
+          npcId, npcName, screenX, screenY,
+          gardenRequest: wordEntry.word,
+        })
+        EventBus.emit('task-open')
+        return
+      }
 
       const bank = BANKS[save.skillLevel]
       const recent = recentWords[npcId] || []
@@ -78,8 +171,109 @@ export function TaskBubble() {
 
     EventBus.emit('hearts-earned', { amount: heartsEarned, screenX: interaction.screenX, screenY: interaction.screenY })
 
-    setInteraction(null)
-    EventBus.emit('task-close')
+    // Show random praise before closing
+    const msg = PRAISE[Math.floor(Math.random() * PRAISE.length)]
+    setPraise({ npcName: interaction.npcName, msg })
+    if (isAudioEnabled()) {
+      window.speechSynthesis.cancel()
+      const utt = new SpeechSynthesisUtterance(`${interaction.npcName} says: ${msg}`)
+      utt.rate = 0.9
+      utt.pitch = 1.1
+      window.speechSynthesis.speak(utt)
+    }
+    setTimeout(() => {
+      setPraise(null)
+      setInteraction(null)
+      EventBus.emit('task-close')
+    }, 1500)
+  }
+
+  if (praise) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{praise.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>{praise.msg}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.bookRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            Can you bring me a book about &quot;{interaction.bookRequest}&quot;?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss} style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll find it!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.pondRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            I dropped my special word in the pond! Can you swim in and find it?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss}
+            style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll go swimming!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.chopRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            Can you chop me some wood with &quot;{interaction.chopRequest}&quot; carved in it?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss}
+            style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll go chop!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (interaction?.gardenRequest) {
+    return (
+      <div className={styles.overlay}>
+        <div className={styles.bubble}>
+          <div className={styles.npcHeader}>
+            <span>{interaction.npcName} says:</span>
+          </div>
+          <div className={styles.praise}>
+            Can you plant me a word garden with &quot;{interaction.gardenRequest}&quot;?
+          </div>
+          <button className={styles.dismiss} onClick={handleDismiss}
+            style={{ position: 'relative', width: '100%', marginTop: 8, fontSize: '8px', padding: '10px' }}>
+            OK, I&apos;ll go plant!
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (!interaction) return null

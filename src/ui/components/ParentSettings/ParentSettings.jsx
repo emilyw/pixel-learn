@@ -72,6 +72,10 @@ export function ParentSettings({ onClose }) {
           <div className={styles.label}>Today's progress</div>
           <div className={styles.stat}>Hearts today: {save.dailyHeartsEarned} / {save.dailyHeartCap}</div>
           <div className={styles.stat}>Total hearts: {save.totalHearts}</div>
+          <button className={styles.btn} style={{ marginTop: 4 }}
+            onClick={() => update({ dailyHeartsEarned: 0, dailyQuestProgress: 0, dailyQuestComplete: false })}>
+            Reset Daily Progress
+          </button>
         </div>
 
         <div className={styles.row}>
